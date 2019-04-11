@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/btnImage"
+        android:icon="@drawable/ic_action_cam_blue"
+        android:title="Add Image"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/btnAudioRecord"
+        android:icon="@drawable/ic_action_mic_blue"
+        android:title="Add Audio Record"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/btnLocation"
+        android:icon="@drawable/ic_action_location_blue"
+        android:title="See Note Location"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/btnSaveNote"
+        android:icon="@drawable/ic_action_save_blue"
+        android:title="Save Note"
+        app:showAsAction="always|withText" />
+    <item
+        android:id="@+id/btnDelete"
+        android:title="Delete Note"
+        app:showAsAction="never" />
+</menu>

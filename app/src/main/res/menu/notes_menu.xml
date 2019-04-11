@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/btnMenuAddNote"
+        android:icon="@drawable/ic_add"
+        android:title="@string/add_note"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/search"
+        android:icon="@drawable/ic_search_black_24dp"
+        android:title="@string/search"
+        app:actionViewClass="android.widget.SearchView"
+        app:showAsAction="collapseActionView|always" />
+    <item
+        android:id="@+id/btnOrderTitleAsc"
+        android:title="@string/order_by_title_asc" />
+    <item
+        android:id="@+id/btnOrderTitleDesc"
+        android:title="@string/order_by_title_desc" />
+    <item
+        android:id="@+id/btnOrderDateDesc"
+        android:title="@string/order_by_date_newest" />
+    <item
+        android:id="@+id/btnOrderDateAsc"
+        android:title="@string/order_by_date_oldest" />
+</menu>
