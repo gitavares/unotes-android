@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
@@ -49,7 +50,7 @@ import java.util.Date;
 import java.util.List;
 
 
-public class NoteActivity extends AppCompatActivity {
+public class NoteActivity extends AppCompatActivity implements LocationListener {
 
     public static AppDatabase sAppDatabase;
     private Note note;
@@ -66,11 +67,18 @@ public class NoteActivity extends AppCompatActivity {
     private RecyclerView.LayoutManager mLayoutAudioManager;
     private TextView lblAttachmentTitle;
 
-    // for location
+    // for locationNetwork
     private static final int REQUEST_LOCATION = 1;
     LocationManager locationManager;
-    double latitude;
-    double longitude;
+    private static double latitude;
+    private static double longitude;
+    private static double updatedLatitude;
+    private static double updatedLongitude;
+    private static final long MIN_TIME_BW_UPDATES = 1000 * 60 * 30; // 30 minute
+    private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 10; // 10 meters
+    Location locationNetwork;
+    Location locationGPS;
+    Location locationPassive;
 
     // for images
     private int REQUEST_CAMERA = 0;
@@ -91,29 +99,31 @@ public class NoteActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note);
 
-        checkPermissions();
-
         txtNoteTitle = findViewById(R.id.txtNoteTitle);
         txtNoteDescription = findViewById(R.id.txtNoteDescription);
         rvImages = findViewById(R.id.rvImages);
         rvAudioRecords = findViewById(R.id.rvAudioRecords);
         lblAttachmentTitle = findViewById(R.id.lblAttachmentTitle);
 
-        categoryId = getIntent().getStringExtra("categoryId");
-        Log.d("TEST", "category ID: " + categoryId);
+        // CHECK GENERAL PERMISSIONS
+        checkPermissions();
 
-        if(getIntent().getStringExtra("noteId") == null){
-            noteId = "";
-        } else {
-            noteId = getIntent().getStringExtra("noteId");
-        }
-
-        note = new Note();
-        mImageList = new ArrayList<>();
-        mAudioList = new ArrayList<>();
 
         // LOCATION
         ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_LOCATION);
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(NoteActivity.this, new String[]{ Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_LOCATION);
+        }
+
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, this);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, this);
+        locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, this);
+        locationNetwork = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        locationGPS = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        locationPassive = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+
 
         // DATABASE
         sAppDatabase = Room.databaseBuilder(NoteActivity.this, AppDatabase.class, "unotes")
@@ -121,30 +131,51 @@ public class NoteActivity extends AppCompatActivity {
                 .fallbackToDestructiveMigration() // because i wont implement now migrations
                 .build();
 
-        if(!noteId.isEmpty()) {
-            note = sAppDatabase.mNoteDAO().getNoteById(noteId);
+        note = new Note();
+        mImageList = new ArrayList<>();
+        mAudioList = new ArrayList<>();
+        latitude = 0.0;
+        longitude = 0.0;
+        updatedLatitude = 0.0;
+        updatedLongitude = 0.0;
 
-            if(getIntent().getStringExtra("categoryId") == null){
+        // GET INTENT VALUES
+        categoryId = getIntent().getStringExtra("categoryId");
+        if(getIntent().getStringExtra("noteId") == null){
+            noteId = "";
+        } else {
+            noteId = getIntent().getStringExtra("noteId");
+        }
+
+        if(!noteId.isEmpty()) {
+            note = NoteActivity.sAppDatabase.mNoteDAO().getNoteById(noteId);
+
+            if(categoryId == null){
                 categoryId = note.getCategoryId();
             }
 
             txtNoteTitle.setText(note.getTitle());
             txtNoteDescription.setText(note.getNote());
-            // implement audio record recycler view
 
             // IMAGES
-            mImages = sAppDatabase.mAttachmentDAO().getAttachmentsByNote(noteId, "image");
+            mImages = NoteActivity.sAppDatabase.mAttachmentDAO().getAttachmentsByNote(noteId, "image");
             for(Attachment image : mImages){
                 mImageList.add(image);
             }
 
             // AUDIOS
-            mAudios = sAppDatabase.mAttachmentDAO().getAttachmentsByNote(noteId, "audio");
+            mAudios = NoteActivity.sAppDatabase.mAttachmentDAO().getAttachmentsByNote(noteId, "audio");
             for(Attachment audio : mAudios){
                 mImageList.add(audio);
             }
         }
 
+        // TO UPDATE TOOLBAR INFO
+        category = NoteActivity.sAppDatabase.mCategoryDAO().getCategoryById(categoryId);
+        getSupportActionBar().setHomeButtonEnabled(true);
+        getSupportActionBar().setTitle(category.getName());
+
+        // RECYCLER VIEWS
         // IMAGES
         mLayoutImageManager = new LinearLayoutManager(this);
         rvImages.setLayoutManager(mLayoutImageManager);
@@ -157,9 +188,6 @@ public class NoteActivity extends AppCompatActivity {
         mAudioAdapter = new AudioAdapter(mAudioList, this);
         rvAudioRecords.setAdapter(mAudioAdapter);
 
-        category = sAppDatabase.mCategoryDAO().getCategoryById(categoryId);
-        getSupportActionBar().setHomeButtonEnabled(true);
-        getSupportActionBar().setTitle(category.getName());
     }
 
     @Override
@@ -235,27 +263,27 @@ public class NoteActivity extends AppCompatActivity {
 
             if(noteId.isEmpty()) {
 
-                // get the current lat and long to set
-                locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
                 if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                     buildAlertMessageNoGps();
-                } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                } else {
                     getLocation();
+                    if(updatedLatitude != 0.0 && updatedLatitude != latitude){
+                        latitude = updatedLatitude;
+                        longitude = updatedLongitude;
+                    }
                     note.setLatitude(latitude);
                     note.setLongitude(longitude);
-
-                    Log.d("TEST", "latitude: " + latitude);
-                    Log.d("TEST", "longitude: " + longitude);
                 }
 
                 note.setCreatedDate(currentDateTime);
                 formatting = new Formatting();
                 String newNoteId = formatting.getDateTimeForIdFormatter(currentDateTime);
                 note.set_id(newNoteId);
-                HomeActivity.sAppDatabase.mNoteDAO().addNote(note);
+                NoteActivity.sAppDatabase.mNoteDAO().addNote(note);
+
             } else {
                 Log.d("TEST", "Note id is NOT empty: " + noteId);
-                HomeActivity.sAppDatabase.mNoteDAO().updateNote(note);
+                NoteActivity.sAppDatabase.mNoteDAO().updateNote(note);
             }
 
             Toast.makeText(NoteActivity.this, getString(R.string.msg_note_saved), Toast.LENGTH_LONG).show();
@@ -519,30 +547,44 @@ public class NoteActivity extends AppCompatActivity {
 
     // FOR LOCATION
     private void getLocation() {
-        if (ActivityCompat.checkSelfPermission(NoteActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission
-                (NoteActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(NoteActivity.this, new String[]{ Manifest.permission.ACCESS_FINE_LOCATION }, REQUEST_LOCATION);
-
+        if (locationGPS != null) {
+            latitude = locationGPS.getLatitude();
+            longitude = locationGPS.getLongitude();
+        } else if (locationNetwork != null) {
+            latitude = locationNetwork.getLatitude();
+            longitude = locationNetwork.getLongitude();
+        } else if (locationPassive != null) {
+            latitude = locationPassive.getLatitude();
+            longitude = locationPassive.getLongitude();
         } else {
-            Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            Location location1 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            Location location2 = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
-
-            if (location != null) {
-                latitude = location.getLatitude();
-                longitude = location.getLongitude();
-            } else if (location1 != null) {
-                latitude = location1.getLatitude();
-                longitude = location1.getLongitude();
-            } else if (location2 != null) {
-                latitude = location2.getLatitude();
-                longitude = location2.getLongitude();
-            } else {
-                Toast.makeText(this,"Unable to trace your location",Toast.LENGTH_LONG).show();
-            }
+            Toast.makeText(this,"Unable to trace your locationNetwork",Toast.LENGTH_LONG).show();
         }
+
+        Log.d("TEST", "getLocation() - Latitude: " + latitude);
+        Log.d("TEST", "getLocation() - Longitude: " + longitude);
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        updatedLatitude = location.getLatitude();
+        updatedLongitude = location.getLongitude();
+        Log.d("TEST", "onLocationChanged - Latitude: " + updatedLatitude);
+        Log.d("TEST", "onLocationChanged - Longitude: " + updatedLongitude);
+    }
+
+    @Override
+    public void onStatusChanged(String s, int i, Bundle bundle) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String s) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String s) {
+
     }
 
     protected void buildAlertMessageNoGps() {
@@ -589,5 +631,6 @@ public class NoteActivity extends AppCompatActivity {
         }
         return true;
     }
+
 
 }

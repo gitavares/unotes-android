@@ -54,12 +54,12 @@ public class LocationActivity extends AppCompatActivity implements OnMapReadyCal
                 .fallbackToDestructiveMigration() // because i wont implement now migrations
                 .build();
 
-        note = sAppDatabase.mNoteDAO().getNoteById(noteId);
+        note = LocationActivity.sAppDatabase.mNoteDAO().getNoteById(noteId);
         latitude = note.getLatitude();
         longitude = note.getLongitude();
 
         getSupportActionBar().setHomeButtonEnabled(true);
-        getSupportActionBar().setTitle("Note location");
+        getSupportActionBar().setTitle("Note locationNetwork");
     }
 
     @Override
@@ -88,9 +88,8 @@ public class LocationActivity extends AppCompatActivity implements OnMapReadyCal
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        // Add a marker in Sydney and move the camera
         LatLng noteLocation = new LatLng(latitude, longitude);
-        mMap.addMarker(new MarkerOptions().position(noteLocation).title("Note location"));
+        mMap.addMarker(new MarkerOptions().position(noteLocation).title("Note locationNetwork"));
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(noteLocation, 17));
     }
 }
