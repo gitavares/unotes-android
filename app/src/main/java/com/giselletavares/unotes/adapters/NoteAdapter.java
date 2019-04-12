@@ -1,20 +1,11 @@
 package com.giselletavares.unotes.adapters;
 
-import android.Manifest;
-import android.app.Activity;
 import android.arch.persistence.room.Room;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.Image;
-import android.net.Uri;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,7 +20,6 @@ import com.giselletavares.unotes.models.Note;
 import com.giselletavares.unotes.utils.Formatting;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotesViewHolder> {
@@ -90,8 +80,6 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotesViewHolde
         } else {
             notesViewHolder.imgNote.setVisibility(View.INVISIBLE);
         }
-
-        Log.d("TEST", "Note ID: " + currentNote.get_id() + " - Note Latitude: " + currentNote.getLatitude() + ", Note Longitude: " + currentNote.getLongitude());
 
     }
 

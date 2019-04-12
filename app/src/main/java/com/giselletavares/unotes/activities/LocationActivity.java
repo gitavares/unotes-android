@@ -32,9 +32,6 @@ public class LocationActivity extends AppCompatActivity implements OnMapReadyCal
     private Double longitude;
     private String noteId;
     private Note note;
-    private Toolbar toolbar;
-    private ImageButton btnBack;
-    private MapView mMapView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

@@ -13,7 +13,6 @@ import android.widget.LinearLayout;
 
 import com.giselletavares.unotes.R;
 import com.giselletavares.unotes.activities.ImageActivity;
-import com.giselletavares.unotes.models.AppDatabase;
 import com.giselletavares.unotes.models.Attachment;
 
 import java.io.File;
@@ -21,7 +20,6 @@ import java.util.List;
 
 public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImagesViewHolder> {
 
-    public static AppDatabase sAppDatabase;
     private List<Attachment> mAttachmentList;
     private Context mContext;
 

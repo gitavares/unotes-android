@@ -12,7 +12,6 @@ import android.widget.TextView;
 
 import com.giselletavares.unotes.R;
 import com.giselletavares.unotes.activities.AudioActivity;
-import com.giselletavares.unotes.models.AppDatabase;
 import com.giselletavares.unotes.models.Attachment;
 import com.giselletavares.unotes.utils.Formatting;
 

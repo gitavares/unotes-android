@@ -11,6 +11,7 @@ import android.graphics.Bitmap;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
@@ -26,9 +27,14 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.support.v7.app.AlertDialog;
+import android.widget.ToggleButton;
 
 import com.giselletavares.unotes.R;
 import com.giselletavares.unotes.adapters.AudioAdapter;
@@ -69,29 +75,33 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
 
     // for locationNetwork
     private static final int REQUEST_LOCATION = 1;
-    LocationManager locationManager;
+    private LocationManager locationManager;
     private static double latitude;
     private static double longitude;
     private static double updatedLatitude;
     private static double updatedLongitude;
     private static final long MIN_TIME_BW_UPDATES = 1000 * 60 * 30; // 30 minute
     private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 10; // 10 meters
-    Location locationNetwork;
-    Location locationGPS;
-    Location locationPassive;
+    private Location locationNetwork;
+    private Location locationGPS;
+    private Location locationPassive;
 
     // for images
     private int REQUEST_CAMERA = 0;
     private int SELECT_FILE = 1;
     private String userChosenTask;
-    ImageAdapter mImageAdapter;
-    AudioAdapter mAudioAdapter;
+    private ImageAdapter mImageAdapter;
     private List<Attachment> mImageList;
     private List<Attachment> mImages;
+    private Category category;
+
+    // for audio
+    private AudioAdapter mAudioAdapter;
     private List<Attachment> mAudioList;
     private List<Attachment> mAudios;
-    private Category category;
     private static Boolean isAudio;
+    private MediaRecorder mediaRecorder;
+    private String AudioSavePathInDevice = "";
 
 
     @Override
@@ -166,7 +176,7 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
             // AUDIOS
             mAudios = NoteActivity.sAppDatabase.mAttachmentDAO().getAttachmentsByNote(noteId, "audio");
             for(Attachment audio : mAudios){
-                mImageList.add(audio);
+                mAudioList.add(audio);
             }
         }
 
@@ -484,62 +494,131 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
 
     private void recordAudioIntent()
     {
-//        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//        startActivityForResult(intent, REQUEST_CAMERA);
+        AlertDialog.Builder builder = new AlertDialog.Builder(NoteActivity.this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_add_audio_record, null);
+        final ToggleButton tbRecordAudio = view.findViewById(R.id.tbRecordAudio);
+        final Button btnAddAudioRecord_dialog = view.findViewById(R.id.btnAddAudioRecord_dialog);
+
+        btnAddAudioRecord_dialog.setEnabled(false);
+
+        builder.setView(view);
+        final AlertDialog dialog = builder.create();
+
+        tbRecordAudio.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                if(isChecked){
+                    AudioSavePathInDevice = Environment.getExternalStorageDirectory() + "/unotes/" +
+                            Calendar.getInstance().getTimeInMillis() + ".3gp";
+
+                    mediaRecorder = new MediaRecorder();
+                    mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+                    mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+                    mediaRecorder.setAudioEncoder(MediaRecorder.OutputFormat.AMR_NB);
+                    mediaRecorder.setOutputFile(AudioSavePathInDevice);
+
+                    try {
+                        mediaRecorder.prepare();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    mediaRecorder.start();
+
+                    Toast.makeText(NoteActivity.this, "Recording audio...", Toast.LENGTH_LONG).show();
+
+                } else {
+                    mediaRecorder.stop();
+
+                    btnAddAudioRecord_dialog.setEnabled(true);
+
+                    Toast.makeText(NoteActivity.this, "Recording Completed", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
+        btnAddAudioRecord_dialog.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(AudioSavePathInDevice != ""){
+                    addAudioDataBaseAndList(AudioSavePathInDevice);
+                    dialog.cancel();
+                } else {
+                    Toast.makeText(NoteActivity.this, "Error saving audio recording", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
+        dialog.show();
     }
 
     private void audioLibraryIntent()
     {
         isAudio = true;
         Intent intent = new Intent();
-        intent.setType("audio/*");
+//        intent.setType("audio/*");
+        intent.setType("video/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);//
         startActivityForResult(Intent.createChooser(intent, "Select File"), SELECT_FILE);
     }
 
     private void onSelectFromAudioLibraryResult(Intent data) {
-
-        Uri selectedAudioURI = data.getData();
-        Log.d("TEST", "selectedAudioURI: " + selectedAudioURI);
+        String absFileName = data.getData().getLastPathSegment();
+        String fileName = absFileName.substring(15);
+        String path = Environment.getExternalStorageDirectory() + "/unotes/" + fileName;
 
         if(data != null){
-
-//            try {
-//                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageURI);
-//                addImageDataBaseAndList(bitmap);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-
+            addAudioDataBaseAndList(path);
         }
     }
 
-    public String saveAudio(MediaRecorder mediaRecorder) {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-//        myBitmap.compress(Bitmap.CompressFormat.JPEG, 90, bytes);
-        File wallpaperDirectory = new File(
-                Environment.getExternalStorageDirectory() + "/unotes");
-        // have the object build the directory structure, if needed.
-        if (!wallpaperDirectory.exists()) {
-            wallpaperDirectory.mkdirs();
-        }
-//
-        try {
-            File f = new File(wallpaperDirectory, Calendar.getInstance()
-                    .getTimeInMillis() + ".wav");
-            f.createNewFile();
-            FileOutputStream fo = new FileOutputStream(f);
-            fo.write(bytes.toByteArray());
-            MediaScannerConnection.scanFile(this,
-                    new String[]{f.getPath()},
-                    new String[]{"audio/wav"}, null);
-            fo.close();
-            Log.d("TEST", "File Saved::--->" + f.getAbsolutePath());
+    private void addAudioDataBaseAndList(String path){
+        Log.d("TEST", "path: " + path);
 
-            return f.getAbsolutePath();
-        } catch (IOException e1) {
-            e1.printStackTrace();
-        }
+        Attachment attachment = new Attachment();
+
+        formatting = new Formatting();
+        String newAttachmentId = formatting.getDateTimeForIdFormatter(new Date());
+        attachment.set_id(newAttachmentId);
+
+        attachment.setNoteId(note.get_id());
+        attachment.setFilename(path);
+        attachment.setType("audio");
+        attachment.setCreatedDate(new Date());
+
+        NoteActivity.sAppDatabase.mAttachmentDAO().addAttachment(attachment);
+        mAudioList.add(attachment);
+
+        mAudioAdapter.notifyDataSetChanged();
+    }
+
+    public String saveAudio(MediaPlayer mediaPlayer) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+
+//
+////        myBitmap.compress(Bitmap.CompressFormat.JPEG, 90, bytes);
+//        File wallpaperDirectory = new File(
+//                Environment.getExternalStorageDirectory() + "/unotes");
+//        // have the object build the directory structure, if needed.
+//        if (!wallpaperDirectory.exists()) {
+//            wallpaperDirectory.mkdirs();
+//        }
+////
+//        try {
+//            File f = new File(wallpaperDirectory, Calendar.getInstance()
+//                    .getTimeInMillis() + ".wav");
+//            f.createNewFile();
+//            FileOutputStream fo = new FileOutputStream(f);
+//            fo.write(bytes.toByteArray());
+//            MediaScannerConnection.scanFile(this,
+//                    new String[]{f.getPath()},
+//                    new String[]{"audio/wav"}, null);
+//            fo.close();
+//            Log.d("TEST", "File Saved::--->" + f.getAbsolutePath());
+//
+//            return f.getAbsolutePath();
+//        } catch (IOException e1) {
+//            e1.printStackTrace();
+//        }
         return "";
     }
 
@@ -605,6 +684,7 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
         final AlertDialog alert = builder.create();
         alert.show();
     }
+
 
     // GENERAL PERMISSIONS
     public static String[] permissions = new String[]{

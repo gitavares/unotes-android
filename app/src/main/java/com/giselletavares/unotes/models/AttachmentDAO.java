@@ -16,7 +16,7 @@ public interface AttachmentDAO {
     @Insert
     void addAttachment(Attachment attachment);
 
-    @Query("SELECT * FROM attachments WHERE note_id = :noteId AND type = :type")
+    @Query("SELECT * FROM attachments WHERE note_id = :noteId AND type = :type ORDER BY createdDate DESC")
     List<Attachment> getAttachmentsByNote(String noteId, String type);
 
     @Query("SELECT filename FROM attachments WHERE note_id = :noteId AND type = 'image' ORDER BY id DESC LIMIT 1")
