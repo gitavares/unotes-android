@@ -30,7 +30,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.support.v7.app.AlertDialog;
@@ -203,6 +202,13 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
     @Override
     protected void onStart() {
         super.onStart();
+        mImageAdapter.notifyDataSetChanged();
+        mAudioAdapter.notifyDataSetChanged();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         mImageAdapter.notifyDataSetChanged();
         mAudioAdapter.notifyDataSetChanged();
     }
@@ -391,10 +397,8 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
     private void onSelectFromGalleryResult(Intent data) {
 
         Uri selectedImageURI = data.getData();
-        Log.d("TEST", "selectedImageURI: " + selectedImageURI);
 
         if(data != null){
-
             try {
                 Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageURI);
                 addImageDataBaseAndList(bitmap);
@@ -407,7 +411,6 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
 
     private void onCaptureImageResult(Intent data) {
         Bitmap thumbnail = (Bitmap) data.getExtras().get("data");
-        Log.d("TEST", "thumbnail: " + thumbnail);
 
         if(data != null){
             addImageDataBaseAndList(thumbnail);
@@ -416,9 +419,6 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
 
     private void addImageDataBaseAndList(Bitmap bitmap){
         String path = saveImage(bitmap);
-
-        Log.d("TEST", "bitmap: " + bitmap);
-        Log.d("TEST", "path: " + path);
 
         Attachment attachment = new Attachment();
 
@@ -434,6 +434,7 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
         HomeActivity.sAppDatabase.mAttachmentDAO().addAttachment(attachment);
         mImageList.add(attachment);
         mImageAdapter.notifyDataSetChanged();
+        saveNote();
     }
 
     public String saveImage(Bitmap myBitmap) {
@@ -456,7 +457,6 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
                     new String[]{f.getPath()},
                     new String[]{"image/jpeg"}, null);
             fo.close();
-            Log.d("TEST", "File Saved::--->" + f.getAbsolutePath());
 
             return f.getAbsolutePath();
         } catch (IOException e1) {
@@ -555,7 +555,6 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
     {
         isAudio = true;
         Intent intent = new Intent();
-//        intent.setType("audio/*");
         intent.setType("video/*");
         intent.setAction(Intent.ACTION_GET_CONTENT);//
         startActivityForResult(Intent.createChooser(intent, "Select File"), SELECT_FILE);
@@ -572,8 +571,6 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
     }
 
     private void addAudioDataBaseAndList(String path){
-        Log.d("TEST", "path: " + path);
-
         Attachment attachment = new Attachment();
 
         formatting = new Formatting();
@@ -587,41 +584,9 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
 
         NoteActivity.sAppDatabase.mAttachmentDAO().addAttachment(attachment);
         mAudioList.add(attachment);
-
         mAudioAdapter.notifyDataSetChanged();
+        saveNote();
     }
-
-    public String saveAudio(MediaPlayer mediaPlayer) {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-
-//
-////        myBitmap.compress(Bitmap.CompressFormat.JPEG, 90, bytes);
-//        File wallpaperDirectory = new File(
-//                Environment.getExternalStorageDirectory() + "/unotes");
-//        // have the object build the directory structure, if needed.
-//        if (!wallpaperDirectory.exists()) {
-//            wallpaperDirectory.mkdirs();
-//        }
-////
-//        try {
-//            File f = new File(wallpaperDirectory, Calendar.getInstance()
-//                    .getTimeInMillis() + ".wav");
-//            f.createNewFile();
-//            FileOutputStream fo = new FileOutputStream(f);
-//            fo.write(bytes.toByteArray());
-//            MediaScannerConnection.scanFile(this,
-//                    new String[]{f.getPath()},
-//                    new String[]{"audio/wav"}, null);
-//            fo.close();
-//            Log.d("TEST", "File Saved::--->" + f.getAbsolutePath());
-//
-//            return f.getAbsolutePath();
-//        } catch (IOException e1) {
-//            e1.printStackTrace();
-//        }
-        return "";
-    }
-
 
 
     // FOR LOCATION
