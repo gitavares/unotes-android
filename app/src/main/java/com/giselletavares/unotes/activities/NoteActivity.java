@@ -261,6 +261,10 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
                 }
                 break;
 
+            case R.id.btnDelete:
+                deleteNote();
+                break;
+
         }
 
         return super.onOptionsItemSelected(item);
@@ -307,6 +311,40 @@ public class NoteActivity extends AppCompatActivity implements LocationListener 
         } else {
             Toast.makeText(NoteActivity.this, getString(R.string.error_save_note), Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void deleteNote(){
+        final AlertDialog alertDialog =new AlertDialog.Builder(this).create();
+        alertDialog.setTitle("Are you want to delete this");
+        alertDialog.setCancelable(false);
+        alertDialog.setMessage("By deleting this, item will permanently be deleted. Are you still want to delete this?");
+        alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+            }
+        });
+
+        alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Delete", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+                // DATABASE
+                sAppDatabase = Room.databaseBuilder(NoteActivity.this, AppDatabase.class, "unotes")
+                        .allowMainThreadQueries() // it will allow the database works on the main thread
+                        .fallbackToDestructiveMigration() // because i wont implement now migrations
+                        .build();
+
+                sAppDatabase.mNoteDAO().deleteNote(note);
+                alertDialog.dismiss();
+
+                sAppDatabase.close();
+
+                Intent intent = new Intent(NoteActivity.this, NotesActivity.class);
+                intent.putExtra("categoryId", note.getCategoryId());
+                startActivity(intent);
+            }
+        });
+        alertDialog.show();
     }
 
 
