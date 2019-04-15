@@ -43,51 +43,63 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
     public CategoriesViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int viewType) {
         final Context mContext = viewGroup.getContext();
 
+        // DATABASE
+        sAppDatabase = Room.databaseBuilder(mContext, AppDatabase.class, "unotes")
+                .allowMainThreadQueries() // it will allow the database works on the main thread
+                .fallbackToDestructiveMigration() // because i wont implement now migrations
+                .build();
+
         View mView;
         mView = LayoutInflater.from(mContext).inflate(R.layout.item_category_list, viewGroup, false);
         final CategoriesViewHolder categoriesViewHolder = new CategoriesViewHolder(mView);
 
+
+
         categoriesViewHolder.mLinearLayout_category.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-            Intent intent = new Intent(mContext, NotesActivity.class);
-            intent.putExtra("categoryId", mCategoryList.get(categoriesViewHolder.getAdapterPosition()).get_id());
-            mContext.startActivity(intent);
+                Intent intent = new Intent(mContext, NotesActivity.class);
+                intent.putExtra("categoryId", mCategoryList.get(categoriesViewHolder.getAdapterPosition()).get_id());
+                mContext.startActivity(intent);
             }
         });
 
         categoriesViewHolder.mLinearLayout_category.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
+
+                int count = sAppDatabase.mNoteDAO().getNumOfNotesByCategory(mCategoryList.get(categoriesViewHolder.getAdapterPosition()).get_id());
+
                 final AlertDialog alertDialog =new AlertDialog.Builder(mContext).create();
-                alertDialog.setTitle("Are you want to delete this");
+
                 alertDialog.setCancelable(false);
-                alertDialog.setMessage("By deleting this, item will permanently be deleted, and all notes associate as well. Are you still want to delete this?");
+                if(count > 0) {
+                    alertDialog.setTitle("You cannot delete this");
+                    alertDialog.setMessage("This Category has Notes associated. You need to delete the notes first before delete this category.");
+                } else {
+                    alertDialog.setTitle("Are you want to delete this");
+                    alertDialog.setMessage("By deleting this, item will permanently be deleted, and all notes associate as well. Are you still want to delete this?");
+                }
+
                 alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "Cancel", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                     }
                 });
 
-                alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Delete", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
+                if(count == 0) {
+                    alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Delete", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
 
-                        // DATABASE
-                        sAppDatabase = Room.databaseBuilder(mContext, AppDatabase.class, "unotes")
-                                .allowMainThreadQueries() // it will allow the database works on the main thread
-                                .fallbackToDestructiveMigration() // because i wont implement now migrations
-                                .build();
-
-                        Category currentCategory = mCategoryList.get(categoriesViewHolder.getAdapterPosition());
-                        sAppDatabase.mCategoryDAO().deleteCategory(currentCategory);
-                        alertDialog.dismiss();
-                        mCategoryList.remove(categoriesViewHolder.getAdapterPosition());
-                        notifyDataSetChanged();
-
-                        sAppDatabase.close();
-                    }
-                });
+                            Category currentCategory = mCategoryList.get(categoriesViewHolder.getAdapterPosition());
+                            sAppDatabase.mCategoryDAO().deleteCategory(currentCategory);
+                            alertDialog.dismiss();
+                            mCategoryList.remove(categoriesViewHolder.getAdapterPosition());
+                            notifyDataSetChanged();
+                        }
+                    });
+                }
                 alertDialog.show();
                 return false;
             }
@@ -118,17 +130,17 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
                             currentCategory.setUpdatedDate(new Date());
 
                             // DATABASE
-                            sAppDatabase = Room.databaseBuilder(mContext, AppDatabase.class, "unotes")
-                                    .allowMainThreadQueries() // it will allow the database works on the main thread
-                                    .fallbackToDestructiveMigration() // because i wont implement now migrations
-                                    .build();
+//                            sAppDatabase = Room.databaseBuilder(mContext, AppDatabase.class, "unotes")
+//                                    .allowMainThreadQueries() // it will allow the database works on the main thread
+//                                    .fallbackToDestructiveMigration() // because i wont implement now migrations
+//                                    .build();
 
                             sAppDatabase.mCategoryDAO().updateCategory(currentCategory);
 
                             Toast.makeText(mContext, "Category edited: " + txtCategoryName.getText().toString(), Toast.LENGTH_LONG).show();
 
                             notifyDataSetChanged();
-                            sAppDatabase.close();
+//                            sAppDatabase.close();
 
                             dialog.cancel();
 
@@ -141,6 +153,8 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
                 dialog.show();
             }
         });
+
+        sAppDatabase.close();
 
         return categoriesViewHolder;
 
