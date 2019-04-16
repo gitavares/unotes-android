@@ -23,9 +23,6 @@
     <string name="error_category_add">The category name can\'t be empty</string>
     <string name="error_save_note">The title can\'t be empty</string>
     <string name="msg_note_saved">Note saved</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_location">Map</string>
     <string name="add_record_audio">Add Record Audio</string>
 </resources>
