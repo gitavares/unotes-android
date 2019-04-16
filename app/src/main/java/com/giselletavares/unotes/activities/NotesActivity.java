@@ -152,7 +152,7 @@ public class NotesActivity extends AppCompatActivity {
 
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             searchTerm = intent.getStringExtra(SearchManager.QUERY);
-            notes = NotesActivity.sAppDatabase.mNoteDAO().getNotesBySearch(categoryId, "%"+searchTerm+"%");
+            notes = NotesActivity.sAppDatabase.mNoteDAO().getNotesBySearch(categoryId, "%" + searchTerm + "%");
             getUpdatedNotesAfterResultQuery();
         }
 
